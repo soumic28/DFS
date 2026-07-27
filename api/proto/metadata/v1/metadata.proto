@@ -1,0 +1,204 @@
+syntax = "proto3";
+
+// The coordinator contract. All placement intelligence lives here; gateways
+// and nodes ask rather than decide.
+package metadata.v1;
+
+import "storage/v1/storage.proto";
+
+option go_package = "github.com/soumi/dfs/api/gen/metadata/v1;metadatav1";
+
+service Metadata {
+  // --- Namespace (phase 2) ---
+  rpc CreateBucket(CreateBucketRequest) returns (CreateBucketResponse);
+  rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse);
+  rpc LookupObject(LookupObjectRequest) returns (LookupObjectResponse);
+  rpc DeleteObject(DeleteObjectRequest) returns (DeleteObjectResponse);
+
+  // AllocateChunk asks where to write a chunk. If the hash is already known
+  // the response says so and the gateway skips the upload entirely — this is
+  // where cluster-wide deduplication happens.
+  rpc AllocateChunk(AllocateChunkRequest) returns (AllocateChunkResponse);
+
+  // CommitObject makes an upload visible, in a single transaction: insert the
+  // version, its ordered chunk list and placements, bump refcounts, and flip
+  // is_latest. Readers never observe a partially written object.
+  rpc CommitObject(CommitObjectRequest) returns (CommitObjectResponse);
+
+  // --- Membership (phase 3) ---
+
+  // Heartbeat is a long-lived bidirectional stream: nodes push status up,
+  // the coordinator pushes repair and drain orders down. One connection, no
+  // polling, and the stream dying is itself the failure signal.
+  rpc Heartbeat(stream NodeStatus) returns (stream NodeCommand);
+
+  rpc RegisterNode(RegisterNodeRequest) returns (RegisterNodeResponse);
+  rpc ClusterStatus(ClusterStatusRequest) returns (ClusterStatusResponse);
+
+  // ReportBadReplica is called by a reader whose checksum verification failed.
+  // A read that detects corruption is the fastest corruption signal there is —
+  // faster than waiting for the scrubber's weekly sweep.
+  rpc ReportBadReplica(ReportBadReplicaRequest) returns (ReportBadReplicaResponse);
+}
+
+// --- Namespace types ---
+
+message CreateBucketRequest {
+  string name = 1;
+  string owner_id = 2;
+  bool versioning_enabled = 3;
+  int64 quota_bytes = 4;
+}
+message CreateBucketResponse {
+  string bucket_id = 1;
+}
+
+message ChunkPlacement {
+  storage.v1.ChunkRef ref = 1;
+  // Addresses of nodes holding this chunk or shard.
+  repeated string node_addrs = 2;
+  int64 size = 3;
+}
+
+message ObjectChunk {
+  int32 seq = 1;
+  storage.v1.ChunkRef ref = 2;
+  int64 byte_offset = 3;
+  int64 size = 4;
+  repeated string node_addrs = 5;
+}
+
+message AllocateChunkRequest {
+  bytes chunk_id = 1;
+  int64 size = 2;
+}
+message AllocateChunkResponse {
+  // True when the chunk already exists cluster-wide: do not upload it.
+  bool already_exists = 1;
+  // Nodes to write to when it does not.
+  repeated string target_node_addrs = 2;
+  int32 write_quorum = 3;
+}
+
+message CommitObjectRequest {
+  string bucket = 1;
+  string key = 2;
+  int64 size = 3;
+  string content_type = 4;
+  string etag = 5;
+  repeated ObjectChunk chunks = 6;
+  map<string, string> metadata = 7;
+}
+message CommitObjectResponse {
+  string version_id = 1;
+}
+
+message LookupObjectRequest {
+  string bucket = 1;
+  string key = 2;
+  string version_id = 3; // empty means latest
+}
+message LookupObjectResponse {
+  bool found = 1;
+  string version_id = 2;
+  int64 size = 3;
+  string content_type = 4;
+  string etag = 5;
+  repeated ObjectChunk chunks = 6;
+  map<string, string> metadata = 7;
+}
+
+message ListObjectsRequest {
+  string bucket = 1;
+  string prefix = 2;
+  string delimiter = 3;
+  string continuation_token = 4;
+  int32 max_keys = 5;
+}
+message ListObjectsResponse {
+  repeated ObjectSummary objects = 1;
+  repeated string common_prefixes = 2;
+  string next_continuation_token = 3;
+  bool is_truncated = 4;
+}
+message ObjectSummary {
+  string key = 1;
+  int64 size = 2;
+  string etag = 3;
+  int64 modified_at_unix = 4;
+}
+
+message DeleteObjectRequest {
+  string bucket = 1;
+  string key = 2;
+  string version_id = 3;
+}
+message DeleteObjectResponse {
+  bool deleted = 1;
+}
+
+// --- Membership types ---
+
+enum NodeState {
+  NODE_STATE_UNSPECIFIED = 0;
+  NODE_STATE_JOINING = 1;
+  NODE_STATE_LIVE = 2;
+  NODE_STATE_SUSPECT = 3;
+  NODE_STATE_DEAD = 4;
+  NODE_STATE_DRAINING = 5;
+}
+
+message RegisterNodeRequest {
+  string node_id = 1;
+  string addr = 2;
+  string zone = 3;
+  int64 capacity_bytes = 4;
+}
+message RegisterNodeResponse {
+  int64 heartbeat_interval_ms = 1;
+}
+
+message NodeStatus {
+  string node_id = 1;
+  int64 capacity_bytes = 2;
+  int64 used_bytes = 3;
+  int64 chunk_count = 4;
+  double load_average = 5;
+  int64 scrub_progress_permille = 6;
+}
+
+message NodeCommand {
+  oneof command {
+    storage.v1.PullChunkRequest pull = 1;
+    storage.v1.DeleteChunkRequest delete = 2;
+    DrainOrder drain = 3;
+  }
+}
+message DrainOrder {
+  bool start = 1;
+}
+
+message ClusterStatusRequest {}
+message ClusterStatusResponse {
+  repeated NodeInfo nodes = 1;
+  int64 chunks_under_replicated = 2;
+  int64 repair_queue_depth = 3;
+  int64 total_capacity_bytes = 4;
+  int64 total_used_bytes = 5;
+}
+message NodeInfo {
+  string node_id = 1;
+  string addr = 2;
+  string zone = 3;
+  NodeState state = 4;
+  int64 capacity_bytes = 5;
+  int64 used_bytes = 6;
+  int64 last_heartbeat_unix = 7;
+}
+
+message ReportBadReplicaRequest {
+  storage.v1.ChunkRef ref = 1;
+  string node_addr = 2;
+  string reason = 3;
+}
+message ReportBadReplicaResponse {}

@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+// The storage node contract. Nodes are deliberately dumb: they know how to
+// store, serve, verify and pull chunks, and nothing about buckets, objects,
+// users, or where any other chunk lives.
+package storage.v1;
+
+option go_package = "github.com/soumi/dfs/api/gen/storage/v1;storagev1";
+
+service StorageNode {
+  // PutChunk streams a chunk to this node. The node writes to a temp file,
+  // fsyncs, verifies the bytes hash to the declared id, and only then renames
+  // it into place. A chunk file therefore either exists complete and correct,
+  // or does not exist.
+  rpc PutChunk(stream PutChunkRequest) returns (PutChunkResponse);
+
+  // GetChunk streams a chunk out, verifying its checksum on the way.
+  rpc GetChunk(GetChunkRequest) returns (stream ChunkData);
+
+  rpc StatChunk(StatChunkRequest) returns (StatChunkResponse);
+  rpc DeleteChunk(DeleteChunkRequest) returns (DeleteChunkResponse);
+
+  // PullChunk orders this node to fetch a chunk directly from a peer. Repair
+  // traffic flows node to node; it never passes through the gateway or the
+  // coordinator.
+  rpc PullChunk(PullChunkRequest) returns (PullChunkResponse);
+}
+
+// ChunkRef identifies a chunk, and for erasure-coded chunks, which shard.
+message ChunkRef {
+  // BLAKE3-256 of the chunk contents. The name is the content.
+  bytes id = 1;
+  // -1 for a whole replica; 0..(k+m-1) for an erasure-coded shard.
+  int32 shard_index = 2;
+}
+
+message PutChunkRequest {
+  oneof payload {
+    // Sent once, before any data frames.
+    PutChunkHeader header = 1;
+    bytes data = 2;
+  }
+}
+
+message PutChunkHeader {
+  ChunkRef ref = 1;
+  int64 size = 2;
+}
+
+message PutChunkResponse {
+  bool already_present = 1; // deduplicated; no bytes were transferred
+  int64 bytes_written = 2;
+}
+
+message GetChunkRequest {
+  ChunkRef ref = 1;
+  // Optional byte range within the chunk, for HTTP Range requests that touch
+  // only part of a chunk.
+  int64 offset = 2;
+  int64 length = 3;
+}
+
+message ChunkData {
+  bytes data = 1;
+}
+
+message StatChunkRequest {
+  ChunkRef ref = 1;
+}
+
+message StatChunkResponse {
+  bool exists = 1;
+  int64 size = 2;
+  int64 created_at_unix = 3;
+  int64 last_scrubbed_at_unix = 4;
+}
+
+message DeleteChunkRequest {
+  ChunkRef ref = 1;
+}
+
+message DeleteChunkResponse {
+  bool existed = 1;
+}
+
+message PullChunkRequest {
+  ChunkRef ref = 1;
+  // Address of a node known to hold a good copy.
+  string source_addr = 2;
+  int64 size = 3;
+}
+
+message PullChunkResponse {
+  int64 bytes_transferred = 1;
+}

@@ -1,0 +1,26 @@
+# golangci-lint v2 config. If you pin v1 in CI, this file needs the v1 schema instead.
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - bodyclose # unclosed HTTP response bodies leak connections
+    - contextcheck # every blocking call should take a context
+    - errorlint # %w wrapping and errors.Is/As correctness
+    - nilerr # returning nil after checking err != nil
+    - rowserrcheck # sql.Rows.Err() unchecked
+    - sqlclosecheck
+    - noctx # HTTP requests without a context
+    - misspell
+  exclusions:
+    rules:
+      - path: _test\.go$
+        linters: [errcheck, bodyclose]
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports

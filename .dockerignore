@@ -1,0 +1,10 @@
+.git
+.github
+.data
+bin
+dist
+docs
+web/node_modules
+web/.next
+deploy/compose/.env
+**/*_test.go

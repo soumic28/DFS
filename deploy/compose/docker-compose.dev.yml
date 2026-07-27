@@ -1,0 +1,106 @@
+# Local development stack. Phase 0 brings up the coordinator, one storage node
+# and one gateway; nodes 2-6, Postgres and the observability stack join in
+# later phases.
+#
+#   make dev        start
+#   make dev-logs   follow
+#   make down       stop and remove volumes
+#
+# Ports are published to the host here for convenience. The production file
+# does the opposite: only Caddy is reachable from outside.
+
+name: dfs-dev
+
+x-service: &service
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+  restart: unless-stopped
+  networks: [dfs]
+
+x-env: &env
+  DFS_LOG_LEVEL: debug
+  DFS_LOG_FORMAT: text # human readable locally; JSON in production
+  DFS_ADMIN_ADDR: ":9100"
+  DFS_SHUTDOWN_TIMEOUT: 15s
+
+x-healthcheck: &healthcheck
+  # The distroless image has no shell, so the binary probes itself.
+  test: ["CMD", "/service", "probe"]
+  interval: 10s
+  timeout: 3s
+  retries: 3
+  start_period: 5s
+
+services:
+  dfs-meta:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        SERVICE: dfs-meta
+    environment:
+      <<: *env
+      DFS_META_LISTEN_ADDR: ":9090"
+      # Phase 2 replaces this with a real Postgres service. It is Required
+      # rather than defaulted so the failure is loud, not silent.
+      DFS_DATABASE_URL: postgres://dfs:dfs@postgres:5432/dfs?sslmode=disable
+      DFS_REPLICATION_FACTOR: "3"
+      DFS_WRITE_QUORUM: "2"
+    ports:
+      - "9090:9090" # gRPC
+      - "9100:9100" # admin: /healthz /readyz /metrics
+    healthcheck: *healthcheck
+
+  dfs-node-1:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        SERVICE: dfs-node
+    environment:
+      <<: *env
+      DFS_NODE_ID: node-1
+      DFS_NODE_LISTEN_ADDR: ":9091"
+      DFS_META_ADDR: dfs-meta:9090
+      DFS_DATA_DIR: /data
+      DFS_NODE_CAPACITY_BYTES: 2GiB # small locally so quota bugs surface fast
+      DFS_SCRUB_INTERVAL: 1h
+    volumes:
+      - node1-data:/data
+    ports:
+      - "9101:9100"
+    depends_on:
+      dfs-meta:
+        condition: service_healthy
+    healthcheck: *healthcheck
+
+  dfs-gateway:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        SERVICE: dfs-gateway
+    environment:
+      <<: *env
+      DFS_GATEWAY_LISTEN_ADDR: ":8080"
+      DFS_META_ADDR: dfs-meta:9090
+      DFS_CHUNK_SIZE_BYTES: 8MiB
+      DFS_EC_THRESHOLD_BYTES: 1MiB
+    ports:
+      - "8080:8080" # public API
+      - "9102:9100" # admin
+    depends_on:
+      dfs-meta:
+        condition: service_healthy
+    healthcheck: *healthcheck
+
+volumes:
+  node1-data:
+
+networks:
+  dfs:
+    driver: bridge
