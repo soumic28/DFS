@@ -33,6 +33,25 @@ x-healthcheck: &healthcheck
   start_period: 5s
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dfs
+      POSTGRES_USER: dfs
+      POSTGRES_PASSWORD: dfs # dev only; production uses a Docker secret
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # published for local psql; never published in production
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dfs -d dfs"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks: [dfs]
+
   dfs-meta:
     <<: *service
     build:
@@ -43,14 +62,18 @@ services:
     environment:
       <<: *env
       DFS_META_LISTEN_ADDR: ":9090"
-      # Phase 2 replaces this with a real Postgres service. It is Required
-      # rather than defaulted so the failure is loud, not silent.
       DFS_DATABASE_URL: postgres://dfs:dfs@postgres:5432/dfs?sslmode=disable
-      DFS_REPLICATION_FACTOR: "3"
-      DFS_WRITE_QUORUM: "2"
+      DFS_REPLICATION_FACTOR: "1" # single node until Phase 3
+      DFS_WRITE_QUORUM: "1"
+      # Phase 2 seeds the node table from configuration. Phase 3 replaces this
+      # with real registration over the heartbeat stream.
+      DFS_BOOTSTRAP_NODES: "node-1=dfs-node-1:9091"
     ports:
       - "9090:9090" # gRPC
       - "9100:9100" # admin: /healthz /readyz /metrics
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck: *healthcheck
 
   dfs-node-1:
@@ -66,11 +89,12 @@ services:
       DFS_NODE_LISTEN_ADDR: ":9091"
       DFS_META_ADDR: dfs-meta:9090
       DFS_DATA_DIR: /data
-      DFS_NODE_CAPACITY_BYTES: 2GiB # small locally so quota bugs surface fast
+      DFS_NODE_CAPACITY_BYTES: 4GiB # small locally so quota bugs surface fast
       DFS_SCRUB_INTERVAL: 1h
     volumes:
       - node1-data:/data
     ports:
+      - "9091:9091" # gRPC, published for the Phase 1 gate only
       - "9101:9100"
     depends_on:
       dfs-meta:
@@ -100,6 +124,7 @@ services:
 
 volumes:
   node1-data:
+  pg-data:
 
 networks:
   dfs:

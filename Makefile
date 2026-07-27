@@ -6,7 +6,7 @@
 SHELL := /bin/sh
 
 MODULE      := github.com/soumi/dfs
-GO_VERSION  := 1.24
+GO_VERSION  := 1.25
 SERVICES    := dfs-meta dfs-node dfs-gateway dfsctl
 COMPOSE_DEV := deploy/compose/docker-compose.dev.yml
 
@@ -110,6 +110,20 @@ ps:
 smoke:
 	@sh deploy/scripts/smoke.sh
 
+## phase1-gate: 1 GiB round trip, dedup and live corruption against a real node
+# The node's data volume is mounted so the corruption test can rot a chunk file
+# underneath the running node, exactly as a failing disk would.
+phase1-gate:
+	docker run --rm --network dfs-dev_dfs \
+		-v "$(CURDIR)":/src -w /src \
+		-v dfs-gocache:/go/pkg/mod -v dfs-gobuild:/root/.cache/go-build \
+		-v dfs-dev_node1-data:/nodedata \
+		-e NODE_ADDR=dfs-node-1:9091 \
+		-e NODE_DATA_DIR=/nodedata \
+		-e SIZE_MB=$(or $(SIZE_MB),1024) \
+		golang:$(GO_VERSION)-alpine \
+		go test -tags gate -v -count=1 -timeout 20m ./test/gate/
+
 ## down: stop the local stack and delete its volumes
 down:
 	docker compose -f $(COMPOSE_DEV) down -v
@@ -119,4 +133,4 @@ clean:
 	rm -rf bin dist coverage.out
 	-docker volume rm dfs-gocache dfs-gobuild
 
-.PHONY: help tidy build test cover vet lint proto proto-lint images dev dev-logs ps smoke down clean
+.PHONY: help tidy build test cover vet lint proto proto-lint images dev dev-logs ps smoke phase1-gate down clean

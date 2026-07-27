@@ -3,8 +3,9 @@
 /dist/
 *.exe
 
-# Generated protobuf code (regenerate with `make proto`)
-/api/gen/
+# Generated protobuf code IS committed. It keeps builds hermetic (no network
+# or buf toolchain needed to compile) and makes contract changes visible in
+# review. Regenerate with `make proto`; CI fails if the output is stale.
 
 # Local data and secrets
 /.data/

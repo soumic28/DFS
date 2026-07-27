@@ -9,7 +9,7 @@ Estimates assume **~10–15 hours/week**. Full-time, divide by three.
 | Phase | Theme | Est. | Gate |
 |---|---|---|---|
 | 0 | Foundations & dev loop | ✅ **done** | `docker compose up` → 3 healthy services |
-| 1 | Single-node blob store | 4–6 d | 1 GB round-trips byte-identical, survives kill -9 |
+| 1 | Single-node blob store | ✅ **done** | 1 GB round-trips byte-identical, survives kill -9 |
 | 2 | Metadata + first E2E | 1–1.5 wk | `dfsctl cp` uploads and downloads a real file |
 | 3 | Real distribution | 1.5–2 wk | Kill a node mid-download; read still succeeds |
 | 4 | Self-healing | 1–1.5 wk | Cluster returns to R=3 alone; scrubber fixes bitrot |
@@ -26,7 +26,7 @@ Estimates assume **~10–15 hours/week**. Full-time, divide by three.
 ## Phase 0 — Foundations & dev loop ✅ DONE
 *Boring, and it pays for itself by week three.*
 
-- [x] `go mod init github.com/soumi/dfs`, Go 1.24, repo layout per ARCHITECTURE §12
+- [x] `go mod init github.com/soumi/dfs`, Go 1.25, repo layout per ARCHITECTURE §12
 - [x] `buf` configured; `api/proto/storage/v1` and `metadata/v1` define the full internal contract; `make proto` generates via Docker
 - [x] Config from environment (`internal/config`) — **no localhost defaults anywhere**; every peer address uses `Required`. This one rule is what makes the multi-host move painless later.
 - [x] `internal/obs`: `log/slog` JSON handler, request-ID correlation, RED metrics, `/healthz` + `/readyz` + `/metrics` on every binary
@@ -63,29 +63,63 @@ Phase 0 gate: PASS
 
 ---
 
-## Phase 1 — Single-node blob store
-*4–6 days* · **The foundation. Get this bulletproof.**
+## Phase 1 — Single-node blob store ✅ DONE
+*The foundation. Everything else stands on it.*
 
-Build `dfs-node` completely, with no cluster awareness at all.
+`dfs-node` is complete, with no cluster awareness at all.
 
-- [ ] `internal/blobstore`: content-addressed disk layout (`chunks/ab/cd/<hash>.chunk`)
-- [ ] BLAKE3 streaming hasher wrapping an `io.Reader`
-- [ ] **Crash-safe write:** temp file → `fsync(file)` → `fsync(dir)` → verify hash → `rename(2)`
-- [ ] BoltDB index: `chunk_id → {size, checksum, created_at, last_scrubbed_at}`
-- [ ] gRPC `PutChunk` / `GetChunk` / `StatChunk` / `DeleteChunk`, all streaming with a bounded window
-- [ ] Checksum verification on every read; mismatch → `codes.DataLoss` + metric
-- [ ] Capacity enforcement: refuse writes past the configured cap with `RESOURCE_EXHAUSTED`
-- [ ] Boot recovery: purge `tmp/`, reconcile index against what's actually on disk
-- [ ] Scrubber goroutine: rate-limited full sweep, re-hash, flag mismatches
+- [x] `internal/blobstore`: content-addressed disk layout (`chunks/ab/cd/<hash>.chunk`)
+- [x] `internal/chunk`: BLAKE3 streaming hasher, `VerifyingReader`, `HashingWriter`
+- [x] **Crash-safe write:** temp file → `fsync(file)` → verify hash → `rename(2)` → `fsync(dir)`
+- [x] BoltDB index: `chunk_id → {size, created_at, last_scrubbed_at}`, fixed 24-byte records
+- [x] gRPC `PutChunk` / `GetChunk` / `StatChunk` / `DeleteChunk` / `PullChunk`, streamed in 256 KiB frames
+- [x] Checksum verification on every full read; mismatch → `codes.DataLoss`
+- [x] Capacity enforced by **reservation**, not a bare check → `RESOURCE_EXHAUSTED`
+- [x] Boot recovery: purge `tmp/`, reconcile the index against disk **in both directions**
+- [x] Scrubber goroutine: byte-paced sweep, least-recently-scrubbed first, reports without deleting
 
-**Tests:**
-- Property test (`testing/quick`): for any byte slice, `Put` then `Get` returns it exactly
-- Concurrent `Put` of the *same* chunk from 10 goroutines → one file, no corruption
-- `kill -9` mid-write → restart → no partial chunk visible, no index entry
-- Manually flip a byte in a `.chunk` file → next `Get` returns `DataLoss`, scrubber flags it
+**Gate: PASSING** — `make dev && make phase1-gate`:
 
-**Gate:** stream 1 GB in and out, `sha256sum` matches. Kill the process mid-upload, restart,
-confirm the store is clean.
+```
+TestGigabyteRoundTrip           PASS   1.00 GiB round-tripped byte-identical
+TestDeduplicationOverTheWire    PASS   second upload transferred 0 bytes
+TestNodeRejectsMisdeclaredChunk PASS   InvalidArgument
+TestNodeReportsCapacity         PASS
+TestLiveCorruptionIsDetected    PASS   DataLoss; refused to serve rotted bytes
+```
+
+Plus `go test -race ./...`, including `TestSurvivesSIGKILLDuringWrite`, which re-executes
+the test binary as a child, kills it with SIGKILL mid-write, and asserts the reopened store
+is consistent. Simulating a crash with `Close()` would prove nothing — `Close` is exactly
+what a real crash never runs.
+
+**Measured throughput** (Docker Desktop on Windows, volume through a VM filesystem):
+cold write **50–65 MB/s**, read **~400 MB/s**. Writes are fsync-bound — two fsyncs per
+chunk, one for the file and one for the directory — and will be materially faster on the
+VPS's native NVMe. Re-measure there before quoting a number anywhere. A repeat run reports
+300+ MB/s "upload", but that is deduplication returning without writing; only a run against
+an empty volume measures anything real.
+
+**Notes from the build, worth remembering:**
+
+- **Recovery must run in both directions.** A crash can land between `rename(2)` and the
+  index write, leaving a valid chunk file with no index entry. That file was hash-verified
+  before the rename, so it is real data and gets *adopted*. Discarding it would be silent
+  data loss on a routine restart. The reverse — an index entry with no file — is a lie, so
+  the entry is dropped and reads report a miss and fail over. See `recovery_test.go`.
+- **Fault attribution in error codes is load-bearing.** A hash mismatch on `put` means the
+  *uploader* sent bytes not matching the name it declared → `InvalidArgument`. The same
+  mismatch on `get` means *this node's disk* has rotted → `DataLoss`. Returning `DataLoss`
+  for a bad upload would make the coordinator suspect a healthy node and schedule repairs it
+  does not need. This was a real bug, caught by the gate.
+- **Capacity is reserved, not checked.** A plain `used + size > capacity` test lets N
+  concurrent uploads all pass a check only one could satisfy. Reservations are taken before
+  the write and released after, and `TestFailedWriteReleasesReservation` guards the leak that
+  would otherwise slowly wedge a node into refusing everything.
+- **A corrupt chunk is reported, never deleted.** It still proves the chunk was placed here;
+  removing it before a replacement exists lowers durability rather than restoring it.
+- Losing `index.db` entirely costs a rescan, not the data — the chunk files carry their own
+  identity in their names. `TestRecoveryRebuildsAfterIndexLoss` proves it.
 
 ---
 

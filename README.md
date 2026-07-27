@@ -4,18 +4,22 @@ A distributed file storage system built from scratch in Go: content-addressed ch
 rendezvous-hashed placement, quorum replication, erasure coding, and self-healing repair —
 behind an S3-compatible API.
 
-> **Status:** Phase 0 complete — the three services build, run, report health and export
-> metrics under Docker Compose. Phase 1 (the content-addressed blob store) is next.
+> **Status:** Phases 0–1 complete. `dfs-node` is a working content-addressed blob store:
+> crash-safe writes, checksum-verified reads, capacity enforcement, boot recovery and a
+> background scrubber, served over gRPC. A gigabyte round-trips byte-identical and the store
+> survives `kill -9` mid-write. Phase 2 (metadata service + first end-to-end object path) is
+> next.
 
 ## Quick start
 
 Requires Docker. A local Go toolchain is optional — every Make target runs in a container.
 
 ```bash
-make dev      # build and start meta + node + gateway
-make smoke    # the Phase 0 gate: health, readiness, API, metrics
-make test     # unit tests with the race detector
-make down     # stop and remove volumes
+make dev          # build and start meta + node + gateway
+make smoke        # Phase 0 gate: health, readiness, API, metrics
+make phase1-gate  # Phase 1 gate: 1 GiB round trip, dedup, live corruption
+make test         # unit tests with the race detector
+make down         # stop and remove volumes
 ```
 
 Without `make` (Windows without Git Bash):

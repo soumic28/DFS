@@ -472,7 +472,7 @@ which saturates most home connections anyway.
 
 | Concern | Choice | Why |
 |---|---|---|
-| Language | **Go 1.24+** | Goroutine-per-stream fits chunk fan-out exactly; static binaries → ~19 MB images (measured) |
+| Language | **Go 1.25+** | Goroutine-per-stream fits chunk fan-out exactly; static binaries → ~19 MB images (measured) |
 | Config | **stdlib** (`internal/config`) | ~150 lines, no dependency, and it accumulates every error so one restart reports all of them |
 | Internal RPC | **gRPC** + `buf` | Bidirectional streaming for heartbeats, chunked streaming for bytes, typed contracts |
 | External API | **net/http + chi** | Close to stdlib; no framework magic in the hot path |

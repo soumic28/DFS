@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  GO_VERSION: "1.24"
+  GO_VERSION: "1.25"
 
 permissions:
   contents: read
@@ -27,6 +27,11 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum \
             || (echo "::error::go.mod/go.sum are stale — run 'make tidy' and commit"; exit 1)
+
+      - name: Build gate tests
+        # Behind a build tag, so `go test ./...` never compiles them. Compile
+        # them here anyway — a gate that stops building is a gate nobody runs.
+        run: go vet -tags gate ./test/gate/
 
       - name: Vet
         run: go vet ./...
@@ -84,17 +89,39 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-  smoke:
+  gates:
     needs: images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
       - name: Start the stack
         run: docker compose -f deploy/compose/docker-compose.dev.yml up --build -d --wait
 
-      - name: Phase 0 gate
+      - name: Phase 0 gate — health, readiness, metrics
         run: sh deploy/scripts/smoke.sh
+
+      - name: Phase 0 gate — graceful shutdown exits 0
+        run: |
+          docker compose -f deploy/compose/docker-compose.dev.yml stop -t 20 dfs-gateway
+          code=$(docker inspect dfs-dev-dfs-gateway-1 --format '{{.State.ExitCode}}')
+          test "$code" = "0" \
+            || (echo "::error::gateway exited $code on SIGTERM, want 0"; exit 1)
+          docker compose -f deploy/compose/docker-compose.dev.yml start dfs-gateway
+
+      - name: Phase 1 gate — round trip, dedup, live corruption
+        # 256 MiB rather than 1 GiB: the runner's disk is the bottleneck and the
+        # invariants under test do not care about the size.
+        env:
+          NODE_ADDR: localhost:9091
+          NODE_DATA_DIR: /var/lib/docker/volumes/dfs-dev_node1-data/_data
+          SIZE_MB: "256"
+        run: sudo -E env "PATH=$PATH" go test -tags gate -v -count=1 -timeout 20m ./test/gate/
 
       - name: Logs on failure
         if: failure()

@@ -6,7 +6,7 @@
 # no libc, running as a non-root user. Images land around 15 MB, which matters
 # when six node containers share a 100 GB disk.
 
-ARG GO_VERSION=1.24
+ARG GO_VERSION=1.25
 
 # --- build stage ---------------------------------------------------------
 FROM golang:${GO_VERSION}-alpine AS build
