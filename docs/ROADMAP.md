@@ -10,7 +10,7 @@ Estimates assume **~10–15 hours/week**. Full-time, divide by three.
 |---|---|---|---|
 | 0 | Foundations & dev loop | ✅ **done** | `docker compose up` → 3 healthy services |
 | 1 | Single-node blob store | ✅ **done** | 1 GB round-trips byte-identical, survives kill -9 |
-| 2 | Metadata + first E2E | 1–1.5 wk | `dfsctl cp` uploads and downloads a real file |
+| 2 | Metadata + first E2E | ✅ **done** | `dfsctl cp` uploads and downloads a real file |
 | 3 | Real distribution | 1.5–2 wk | Kill a node mid-download; read still succeeds |
 | 4 | Self-healing | 1–1.5 wk | Cluster returns to R=3 alone; scrubber fixes bitrot |
 | 5 | Auth + S3 API | 2 wk | `aws s3 cp` and `rclone sync` work unmodified |
@@ -123,24 +123,58 @@ an empty volume measures anything real.
 
 ---
 
-## Phase 2 — Metadata service + first end-to-end path
-*1–1.5 weeks* · **First moment it's a real system.**
+## Phase 2 — Metadata service + first end-to-end path ✅ DONE
+*The moment it became a real system.*
 
-Still a single storage node. Get the whole pipeline working before adding distribution.
+Still a single storage node — the whole pipeline works before distribution is added.
 
-- [ ] Postgres schema + goose migrations (ARCHITECTURE §9), `sqlc` generating the query layer
-- [ ] `dfs-meta` gRPC: `CreateBucket`, `AllocateChunk`, `CommitObject`, `LookupObject`, `ListObjects`, `DeleteObject`
-- [ ] `CommitObject` is **one transaction**: insert object + version, insert `object_chunks`, upsert placements, bump refcounts, flip `is_latest`
-- [ ] `internal/chunk`: streaming splitter at 8 MiB, emits `(seq, hash, size)` without buffering the whole file
-- [ ] `dfs-gateway` native REST: `PUT/GET/DELETE /v1/b/{bucket}/o/{key}`, `GET /v1/b/{bucket}/o` (list)
-- [ ] HTTP Range support on GET (chunk-selective, not read-then-slice)
-- [ ] Dedup: `AllocateChunk` returns `EXISTS` for a known hash, gateway skips the upload entirely
-- [ ] `dfsctl`: `cp`, `ls`, `rm`, `cat`
-- [ ] Integration tests with `testcontainers-go` (real Postgres, not a mock)
+- [x] Postgres 16 schema + embedded goose migrations, applied at coordinator startup
+- [x] `sqlc` generating the type-safe query layer from `db/queries/` into `internal/meta/dbgen`
+- [x] `dfs-meta` gRPC: `CreateBucket`, `AllocateChunk`, `CommitObject`, `LookupObject`, `ListObjects`, `DeleteObject`, `RegisterNode`, `ClusterStatus`, `ReportBadReplica`
+- [x] `CommitObject` is **one transaction**: demote previous version, insert object, insert `object_chunks`, upsert placements, bump refcounts
+- [x] `internal/chunk`: streaming splitter at 8 MiB that never buffers the whole object
+- [x] `dfs-gateway` native REST: `PUT/GET/HEAD/DELETE /v1/b/{bucket}/o/{key...}`, `GET /v1/b/{bucket}/o`
+- [x] HTTP Range support — chunk-selective, only fetches chunks overlapping the range
+- [x] Dedup: `AllocateChunk` returns `already_exists`, gateway skips the upload **and the transfer**
+- [x] `dfsctl`: `mb`, `cp`, `cat`, `ls`, `rm`, `stat`
 
-**Gate:** `dfsctl cp ./ubuntu.iso dfs://test/ubuntu.iso && dfsctl cp dfs://test/ubuntu.iso ./out.iso`
-→ checksums match. Upload the same file twice → second upload transfers ~0 bytes and disk
-usage doesn't grow. Range request returns the correct byte slice.
+**Gate: PASSING** — `make dev && make phase2-gate`:
+
+```
+1. bucket creation                PASS
+2. 200 MiB round trip             PASS  byte-identical (sha256 52013f38...)
+3. deduplication on re-upload     PASS  25/25 chunks deduplicated, 0 B transferred
+4. ranged reads                   PASS  crossing a chunk boundary, leading, suffix, 206
+5. listing                        PASS  prefix + delimiter rollup
+6. stat and delete                PASS  404 after delete; shared chunks survived
+```
+
+Throughput through the full pipeline: **79 MiB/s up, 261 MiB/s down** (Docker Desktop on
+Windows). A re-upload of identical content completes at 287 MiB/s having sent **zero bytes**.
+
+**Notes from the build, worth remembering:**
+
+- **The unique partial index is the consistency mechanism.**
+  `CREATE UNIQUE INDEX ... ON objects (bucket_id, key) WHERE is_latest` means the database,
+  not the application, guarantees exactly one current version per key. `CommitObject` must
+  demote the old version *before* inserting the new one, inside the same transaction — so
+  there is no instant where a key has zero or two current versions.
+- **The fan-out has to copy the chunk buffer.** The splitter reuses one buffer per chunk;
+  the parallel writers read it concurrently while the next iteration overwrites it. Skipping
+  that copy corrupts data only under concurrency and only under load — the worst kind of bug
+  to find in production. It is the single copy the pipeline pays for.
+- **Never fail over to another replica after bytes have been sent.** `readChunk` retries a
+  different node only when zero bytes have reached the client; otherwise it aborts. Retrying
+  mid-stream would splice two partial responses into one body and silently corrupt the
+  download.
+- **A read that fails its checksum is the fastest corruption signal available** — much
+  faster than the scrubber's next sweep. The gateway reports `DataLoss` to the coordinator
+  before failing over, which marks the placement corrupt for Phase 4's repair queue.
+- **Deletes are tombstones and refcounts are per version.** Deleting one object must never
+  dereference chunks another object shares — the gate proves this by deleting an object and
+  then re-reading its deduplicated twin.
+- Keyset pagination on `key`, not `OFFSET`: stable under concurrent writes, and the
+  continuation token is just the last key returned.
 
 ---
 

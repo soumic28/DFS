@@ -124,6 +124,18 @@ phase1-gate:
 		golang:$(GO_VERSION)-alpine \
 		go test -tags gate -v -count=1 -timeout 20m ./test/gate/
 
+## phase2-gate: file round trip, dedup, ranged reads through the live gateway
+phase2-gate: build
+	@sh deploy/scripts/phase2-gate.sh
+
+## sqlc: regenerate the type-safe query layer from db/queries
+sqlc:
+	docker run --rm -v "$(CURDIR)":/src -w /src sqlc/sqlc:latest generate
+
+## psql: open a shell on the development database
+psql:
+	docker compose -f $(COMPOSE_DEV) exec postgres psql -U dfs -d dfs
+
 ## down: stop the local stack and delete its volumes
 down:
 	docker compose -f $(COMPOSE_DEV) down -v
@@ -133,4 +145,4 @@ clean:
 	rm -rf bin dist coverage.out
 	-docker volume rm dfs-gocache dfs-gobuild
 
-.PHONY: help tidy build test cover vet lint proto proto-lint images dev dev-logs ps smoke phase1-gate down clean
+.PHONY: help tidy build test cover vet lint proto proto-lint sqlc images dev dev-logs ps psql smoke phase1-gate phase2-gate down clean

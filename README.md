@@ -4,29 +4,46 @@ A distributed file storage system built from scratch in Go: content-addressed ch
 rendezvous-hashed placement, quorum replication, erasure coding, and self-healing repair —
 behind an S3-compatible API.
 
-> **Status:** Phases 0–1 complete. `dfs-node` is a working content-addressed blob store:
-> crash-safe writes, checksum-verified reads, capacity enforcement, boot recovery and a
-> background scrubber, served over gRPC. A gigabyte round-trips byte-identical and the store
-> survives `kill -9` mid-write. Phase 2 (metadata service + first end-to-end object path) is
-> next.
+> **Status:** Phases 0–2 complete. **It stores files.** Upload through the gateway and the
+> object is chunked, hashed, deduplicated, written to a storage node, and committed in a
+> single transaction; download reassembles it byte-identically with Range support. A 200 MiB
+> file round-trips at 79 MiB/s up and 261 MiB/s down, and re-uploading identical content
+> transfers zero bytes. Phase 3 (real distribution across multiple nodes) is next.
 
 ## Quick start
 
 Requires Docker. A local Go toolchain is optional — every Make target runs in a container.
 
 ```bash
-make dev          # build and start meta + node + gateway
-make smoke        # Phase 0 gate: health, readiness, API, metrics
-make phase1-gate  # Phase 1 gate: 1 GiB round trip, dedup, live corruption
+make dev          # start postgres + meta + node + gateway
+make smoke        # Phase 0 gate: health, readiness, metrics
+make phase1-gate  # Phase 1 gate: 1 GiB blob store round trip, live corruption
+make phase2-gate  # Phase 2 gate: file round trip, dedup, ranged reads
 make test         # unit tests with the race detector
 make down         # stop and remove volumes
 ```
 
-Without `make` (Windows without Git Bash):
+## Using it
 
-```powershell
-docker compose -f deploy/compose/docker-compose.dev.yml up --build -d --wait
-curl http://localhost:8080/v1/version
+```bash
+make build                                   # builds ./bin/dfsctl
+export DFS_ENDPOINT=http://localhost:8080
+
+./bin/dfsctl mb photos
+./bin/dfsctl cp ./holiday.jpg dfs://photos/2026/holiday.jpg
+./bin/dfsctl ls photos/2026/
+./bin/dfsctl stat dfs://photos/2026/holiday.jpg
+./bin/dfsctl cp dfs://photos/2026/holiday.jpg ./restored.jpg
+./bin/dfsctl rm dfs://photos/2026/holiday.jpg
+```
+
+Or over plain HTTP:
+
+```bash
+curl -X PUT localhost:8080/v1/b/photos
+curl -X PUT --data-binary @holiday.jpg localhost:8080/v1/b/photos/o/2026/holiday.jpg
+curl -r 0-1023 localhost:8080/v1/b/photos/o/2026/holiday.jpg   # ranged read
+curl localhost:8080/v1/b/photos/o?prefix=2026/&delimiter=/     # listing
 ```
 
 | Endpoint | URL |
@@ -35,6 +52,7 @@ curl http://localhost:8080/v1/version
 | Coordinator admin | http://localhost:9100/healthz · /readyz · /metrics |
 | Node 1 admin | http://localhost:9101/healthz |
 | Gateway admin | http://localhost:9102/metrics |
+| PostgreSQL | `make psql` |
 
 ## Documentation
 
