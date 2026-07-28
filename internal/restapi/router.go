@@ -9,9 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/soumi/dfs/internal/app"
-	"github.com/soumi/dfs/internal/gateway"
-	"github.com/soumi/dfs/internal/obs"
+	"github.com/soumic28/dfs/internal/app"
+	"github.com/soumic28/dfs/internal/gateway"
+	"github.com/soumic28/dfs/internal/obs"
 )
 
 type handlers struct {

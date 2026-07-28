@@ -3,7 +3,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: github.com/soumi/dfs/api/gen
+      value: github.com/soumic28/dfs/api/gen
 plugins:
   - remote: buf.build/protocolbuffers/go
     out: ../gen

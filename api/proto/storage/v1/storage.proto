@@ -5,7 +5,7 @@ syntax = "proto3";
 // users, or where any other chunk lives.
 package storage.v1;
 
-option go_package = "github.com/soumi/dfs/api/gen/storage/v1;storagev1";
+option go_package = "github.com/soumic28/dfs/api/gen/storage/v1;storagev1";
 
 service StorageNode {
   // PutChunk streams a chunk to this node. The node writes to a temp file,

@@ -1,8 +1,8 @@
 package meta
 
 import (
-	"github.com/soumi/dfs/internal/chunk"
-	"github.com/soumi/dfs/internal/meta/dbgen"
+	"github.com/soumic28/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/meta/dbgen"
 )
 
 // selectTargets chooses which nodes should hold a chunk.

@@ -19,13 +19,13 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/soumi/dfs/internal/config"
-	"github.com/soumi/dfs/internal/obs"
+	"github.com/soumic28/dfs/internal/config"
+	"github.com/soumic28/dfs/internal/obs"
 )
 
 // Build metadata, injected at link time by the Dockerfile:
 //
-//	-ldflags "-X github.com/soumi/dfs/internal/app.Version=... -X ...Commit=..."
+//	-ldflags "-X github.com/soumic28/dfs/internal/app.Version=... -X ...Commit=..."
 var (
 	Version = "dev"
 	Commit  = "unknown"

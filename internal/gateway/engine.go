@@ -13,9 +13,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	metadatav1 "github.com/soumi/dfs/api/gen/metadata/v1"
-	storagev1 "github.com/soumi/dfs/api/gen/storage/v1"
-	"github.com/soumi/dfs/internal/chunk"
+	metadatav1 "github.com/soumic28/dfs/api/gen/metadata/v1"
+	storagev1 "github.com/soumic28/dfs/api/gen/storage/v1"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 // frameSize is the payload of one streamed gRPC data frame.

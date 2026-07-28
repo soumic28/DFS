@@ -1,4 +1,4 @@
-module github.com/soumi/dfs
+module github.com/soumic28/dfs
 
 go 1.25.7
 

@@ -32,7 +32,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/soumi/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 // Errors a caller is expected to distinguish.

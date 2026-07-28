@@ -20,11 +20,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 
-	metadatav1 "github.com/soumi/dfs/api/gen/metadata/v1"
-	"github.com/soumi/dfs/internal/app"
-	"github.com/soumi/dfs/internal/config"
-	"github.com/soumi/dfs/internal/gateway"
-	"github.com/soumi/dfs/internal/restapi"
+	metadatav1 "github.com/soumic28/dfs/api/gen/metadata/v1"
+	"github.com/soumic28/dfs/internal/app"
+	"github.com/soumic28/dfs/internal/config"
+	"github.com/soumic28/dfs/internal/gateway"
+	"github.com/soumic28/dfs/internal/restapi"
 )
 
 func main() {

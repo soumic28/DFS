@@ -36,8 +36,8 @@ RUN set -eu; \
     CGO_ENABLED=0 GOOS=linux go build \
       -trimpath \
       -ldflags="-s -w \
-        -X github.com/soumi/dfs/internal/app.Version=${VERSION} \
-        -X github.com/soumi/dfs/internal/app.Commit=${COMMIT}" \
+        -X github.com/soumic28/dfs/internal/app.Version=${VERSION} \
+        -X github.com/soumic28/dfs/internal/app.Commit=${COMMIT}" \
       -o /out/service ./cmd/${SERVICE}
 
 # Staged so the runtime image contains a /data owned by the non-root user.
@@ -56,7 +56,7 @@ ARG COMMIT=unknown
 LABEL org.opencontainers.image.title="${SERVICE}" \
       org.opencontainers.image.version="${VERSION}" \
       org.opencontainers.image.revision="${COMMIT}" \
-      org.opencontainers.image.source="https://github.com/soumi/dfs"
+      org.opencontainers.image.source="https://github.com/soumic28/dfs"
 
 COPY --from=build /out/service /service
 COPY --from=build --chown=nonroot:nonroot /out/data /data

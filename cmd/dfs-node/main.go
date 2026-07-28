@@ -19,12 +19,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 
-	storagev1 "github.com/soumi/dfs/api/gen/storage/v1"
-	"github.com/soumi/dfs/internal/app"
-	"github.com/soumi/dfs/internal/blobstore"
-	"github.com/soumi/dfs/internal/chunk"
-	"github.com/soumi/dfs/internal/config"
-	"github.com/soumi/dfs/internal/node"
+	storagev1 "github.com/soumic28/dfs/api/gen/storage/v1"
+	"github.com/soumic28/dfs/internal/app"
+	"github.com/soumic28/dfs/internal/blobstore"
+	"github.com/soumic28/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/config"
+	"github.com/soumic28/dfs/internal/node"
 )
 
 func main() {

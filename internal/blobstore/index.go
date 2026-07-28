@@ -7,7 +7,7 @@ import (
 
 	bolt "go.etcd.io/bbolt"
 
-	"github.com/soumi/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 // The index is node-local metadata only: chunk sizes and timestamps. It is

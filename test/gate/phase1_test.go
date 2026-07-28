@@ -23,8 +23,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	storagev1 "github.com/soumi/dfs/api/gen/storage/v1"
-	"github.com/soumi/dfs/internal/chunk"
+	storagev1 "github.com/soumic28/dfs/api/gen/storage/v1"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 const chunkSize = 8 << 20 // the production chunk size

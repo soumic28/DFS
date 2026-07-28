@@ -1,0 +1,23 @@
+# Everything in this project ultimately runs inside Linux containers, so LF is
+# the correct ending everywhere — in the repository *and* in the working copy.
+#
+# Without this, Git on Windows checks files out with CRLF. A shell script with
+# CRLF fails in a container with the famously unhelpful "bad interpreter: no
+# such file or directory", and a Makefile with CRLF breaks its recipes. Making
+# it policy rather than luck costs nothing.
+* text=auto eol=lf
+
+# Never touch binary content.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+
+# Generated code: still reviewed, but collapsed by default in diffs so a
+# regenerated protobuf file does not bury the change that caused it.
+api/gen/**       linguist-generated=true
+internal/meta/dbgen/** linguist-generated=true

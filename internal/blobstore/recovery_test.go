@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/soumi/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 func openAt(t *testing.T, root string) *Store {

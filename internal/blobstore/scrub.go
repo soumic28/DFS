@@ -12,7 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/soumi/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 var (

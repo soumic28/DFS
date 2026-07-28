@@ -26,7 +26,7 @@ Estimates assume **~10–15 hours/week**. Full-time, divide by three.
 ## Phase 0 — Foundations & dev loop ✅ DONE
 *Boring, and it pays for itself by week three.*
 
-- [x] `go mod init github.com/soumi/dfs`, Go 1.25, repo layout per ARCHITECTURE §12
+- [x] `go mod init github.com/soumic28/dfs`, Go 1.25, repo layout per ARCHITECTURE §12
 - [x] `buf` configured; `api/proto/storage/v1` and `metadata/v1` define the full internal contract; `make proto` generates via Docker
 - [x] Config from environment (`internal/config`) — **no localhost defaults anywhere**; every peer address uses `Required`. This one rule is what makes the multi-host move painless later.
 - [x] `internal/obs`: `log/slog` JSON handler, request-ID correlation, RED metrics, `/healthz` + `/readyz` + `/metrics` on every binary

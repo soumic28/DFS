@@ -5,7 +5,7 @@
 
 SHELL := /bin/sh
 
-MODULE      := github.com/soumi/dfs
+MODULE      := github.com/soumic28/dfs
 GO_VERSION  := 1.25
 SERVICES    := dfs-meta dfs-node dfs-gateway dfsctl
 COMPOSE_DEV := deploy/compose/docker-compose.dev.yml

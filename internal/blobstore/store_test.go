@@ -14,7 +14,7 @@ import (
 	"testing/quick"
 	"time"
 
-	"github.com/soumi/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 func newStore(t *testing.T, capacity int64) *Store {

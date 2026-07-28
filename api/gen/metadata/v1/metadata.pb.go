@@ -10,7 +10,7 @@
 package metadatav1
 
 import (
-	v1 "github.com/soumi/dfs/api/gen/storage/v1"
+	v1 "github.com/soumic28/dfs/api/gen/storage/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -1838,8 +1838,8 @@ const file_metadata_v1_metadata_proto_rawDesc = "" +
 	"\tHeartbeat\x12\x17.metadata.v1.NodeStatus\x1a\x18.metadata.v1.NodeCommand(\x010\x01\x12S\n" +
 	"\fRegisterNode\x12 .metadata.v1.RegisterNodeRequest\x1a!.metadata.v1.RegisterNodeResponse\x12V\n" +
 	"\rClusterStatus\x12!.metadata.v1.ClusterStatusRequest\x1a\".metadata.v1.ClusterStatusResponse\x12_\n" +
-	"\x10ReportBadReplica\x12$.metadata.v1.ReportBadReplicaRequest\x1a%.metadata.v1.ReportBadReplicaResponseB\xa2\x01\n" +
-	"\x0fcom.metadata.v1B\rMetadataProtoP\x01Z3github.com/soumi/dfs/api/gen/metadata/v1;metadatav1\xa2\x02\x03MXX\xaa\x02\vMetadata.V1\xca\x02\vMetadata\\V1\xe2\x02\x17Metadata\\V1\\GPBMetadata\xea\x02\fMetadata::V1b\x06proto3"
+	"\x10ReportBadReplica\x12$.metadata.v1.ReportBadReplicaRequest\x1a%.metadata.v1.ReportBadReplicaResponseB\xa5\x01\n" +
+	"\x0fcom.metadata.v1B\rMetadataProtoP\x01Z6github.com/soumic28/dfs/api/gen/metadata/v1;metadatav1\xa2\x02\x03MXX\xaa\x02\vMetadata.V1\xca\x02\vMetadata\\V1\xe2\x02\x17Metadata\\V1\\GPBMetadata\xea\x02\fMetadata::V1b\x06proto3"
 
 var (
 	file_metadata_v1_metadata_proto_rawDescOnce sync.Once

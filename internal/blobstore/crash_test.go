@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soumi/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 // Environment contract between the parent test and the child process it kills.

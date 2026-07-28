@@ -14,7 +14,7 @@ import (
 	"google.golang.org/grpc/keepalive"
 	"time"
 
-	storagev1 "github.com/soumi/dfs/api/gen/storage/v1"
+	storagev1 "github.com/soumic28/dfs/api/gen/storage/v1"
 )
 
 // nodePool keeps one long-lived gRPC connection per storage node.

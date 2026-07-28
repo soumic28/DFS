@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 
-	"github.com/soumi/dfs/db"
+	"github.com/soumic28/dfs/db"
 )
 
 // Migrate brings the schema up to date.

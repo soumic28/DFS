@@ -727,8 +727,8 @@ const file_storage_v1_storage_proto_rawDesc = "" +
 	"\bGetChunk\x12\x1b.storage.v1.GetChunkRequest\x1a\x15.storage.v1.ChunkData0\x01\x12H\n" +
 	"\tStatChunk\x12\x1c.storage.v1.StatChunkRequest\x1a\x1d.storage.v1.StatChunkResponse\x12N\n" +
 	"\vDeleteChunk\x12\x1e.storage.v1.DeleteChunkRequest\x1a\x1f.storage.v1.DeleteChunkResponse\x12H\n" +
-	"\tPullChunk\x12\x1c.storage.v1.PullChunkRequest\x1a\x1d.storage.v1.PullChunkResponseB\x9a\x01\n" +
-	"\x0ecom.storage.v1B\fStorageProtoP\x01Z1github.com/soumi/dfs/api/gen/storage/v1;storagev1\xa2\x02\x03SXX\xaa\x02\n" +
+	"\tPullChunk\x12\x1c.storage.v1.PullChunkRequest\x1a\x1d.storage.v1.PullChunkResponseB\x9d\x01\n" +
+	"\x0ecom.storage.v1B\fStorageProtoP\x01Z4github.com/soumic28/dfs/api/gen/storage/v1;storagev1\xa2\x02\x03SXX\xaa\x02\n" +
 	"Storage.V1\xca\x02\n" +
 	"Storage\\V1\xe2\x02\x16Storage\\V1\\GPBMetadata\xea\x02\vStorage::V1b\x06proto3"
 

@@ -14,9 +14,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	storagev1 "github.com/soumi/dfs/api/gen/storage/v1"
-	"github.com/soumi/dfs/internal/blobstore"
-	"github.com/soumi/dfs/internal/chunk"
+	storagev1 "github.com/soumic28/dfs/api/gen/storage/v1"
+	"github.com/soumic28/dfs/internal/blobstore"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 // frameSize is the payload size of a streamed data frame. gRPC's default

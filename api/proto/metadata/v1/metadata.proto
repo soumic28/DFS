@@ -6,7 +6,7 @@ package metadata.v1;
 
 import "storage/v1/storage.proto";
 
-option go_package = "github.com/soumi/dfs/api/gen/metadata/v1;metadatav1";
+option go_package = "github.com/soumic28/dfs/api/gen/metadata/v1;metadatav1";
 
 service Metadata {
   // --- Namespace (phase 2) ---

@@ -15,9 +15,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 
-	storagev1 "github.com/soumi/dfs/api/gen/storage/v1"
-	"github.com/soumi/dfs/internal/blobstore"
-	"github.com/soumi/dfs/internal/chunk"
+	storagev1 "github.com/soumic28/dfs/api/gen/storage/v1"
+	"github.com/soumic28/dfs/internal/blobstore"
+	"github.com/soumic28/dfs/internal/chunk"
 )
 
 // newTestNode starts a real gRPC server over an in-memory listener, so these

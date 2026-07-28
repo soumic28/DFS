@@ -20,8 +20,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/soumi/dfs/internal/chunk"
-	"github.com/soumi/dfs/internal/meta/dbgen"
+	"github.com/soumic28/dfs/internal/chunk"
+	"github.com/soumic28/dfs/internal/meta/dbgen"
 )
 
 // Errors callers are expected to distinguish.

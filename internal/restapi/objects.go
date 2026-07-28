@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/soumi/dfs/internal/gateway"
+	"github.com/soumic28/dfs/internal/gateway"
 )
 
 // putObject streams a request body into the cluster.

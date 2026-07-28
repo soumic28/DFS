@@ -18,10 +18,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 
-	metadatav1 "github.com/soumi/dfs/api/gen/metadata/v1"
-	"github.com/soumi/dfs/internal/app"
-	"github.com/soumi/dfs/internal/config"
-	"github.com/soumi/dfs/internal/meta"
+	metadatav1 "github.com/soumic28/dfs/api/gen/metadata/v1"
+	"github.com/soumic28/dfs/internal/app"
+	"github.com/soumic28/dfs/internal/config"
+	"github.com/soumic28/dfs/internal/meta"
 )
 
 func main() {
